@@ -1,5 +1,6 @@
 import mysql from 'mysql2';
 import dotenv from 'dotenv'
+import fallback from 'mysql2/promise'
 dotenv.config();
 
 class Database {
@@ -9,12 +10,13 @@ class Database {
 
     query(sql, args) {
         return new Promise((resolve, reject) => {
-            this.connection.getConnection((err, connection) => {
+            this.connection.getConnection(async (err, connection) => {
                 if (err) {
-                    return reject(err)
+                    let errResp = await this.handleConnectionError(err);
+                    this.query(sql, args)
                 }
 
-                connection.query(sql, args, (err, rows) => {
+                this.connection.query(sql, args, (err, rows) => {
                     if (err) {
                         return reject(err)
                     }
@@ -22,6 +24,28 @@ class Database {
                 })
             })
         })
+    }
+
+    handleConnectionError(err){
+        return new Promise((resolve, reject)=>{
+            // NOTE: Creates DB or rejects 
+            if(err?.sqlMessage == `Unknown database '${dbConfig.database}'`){
+                fallback.createConnection({
+                    host: dbConfig.host,
+                    user     : dbConfig.user,
+                    password : dbConfig.password
+                }).then( fallback => {
+                    fallback.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database};`).then((res) => {
+                        console.info(`Database ${dbConfig.database} created successfully`);
+                        fallback.destroy();
+                        return resolve(`${dbConfig.database} created`);
+                    })
+                })
+            }else{
+                return reject(err);
+            }
+        });
+        
     }
 }
 
