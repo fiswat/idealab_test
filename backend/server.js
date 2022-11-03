@@ -8,6 +8,9 @@ import morgan from "morgan";
 import { db } from "./config/db.js";
 import Users from "./models/Users.js";
 import UserRoute from "./routes/usersRoute.js";
+import {appDataSource} from "./Database/DataSource.js";
+import {getRoles} from "./services/getRoles.js";
+import {Populate} from "./Database/PopulateDb/Populate.js"
 
 const app = express();
 app.use(cors());
@@ -23,7 +26,10 @@ app.get("/", (req, res) => {
 
 const start = async (port) => {
     //create table
-    await db.query(Users);
+    //await db.query(Users);
+    setTimeout(()=>{new Populate().populate()}, 3000)
+    setTimeout(()=>{getRoles();}, 5000)
+    
 
 
     app.listen(port, (err) => {
